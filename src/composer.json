@@ -1,0 +1,19 @@
+{
+  "name": "dengoose/bd-laba",
+  "authors": [
+    {
+      "name": "serdcebolit",
+      "email": "d97510795@gmail.com"
+    }
+  ],
+  "require": {
+    "ext-pdo": "*",
+    "lodash-php/lodash-php": "^0.0.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lib\\": "lib/",
+      "App\\": "app/"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  backend:
+#    user: bitrix
+    container_name: auto-crud_httpd
+    ports:
+      - "80:8887"
+    hostname: auto-crud
+    image: egoriv/httpd:82
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_started
+    volumes:
+      - ./src:/home/bitrix/www
+
+  mysql:
+    container_name: auto-crud_mysql
+    ports:
+      - "3306:3306"
+    image: mariadb:10.5
+    volumes:
+      - ./mysql_data/:/var/lib/mysql:delegated
+    environment:
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=db-name
+      - MYSQL_ROOT_PASSWORD=SuperSecretRootPASSWORD
+    restart: on-failure

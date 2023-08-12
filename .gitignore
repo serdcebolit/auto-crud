@@ -1,0 +1,7 @@
+/.idea
+/.vscode
+
+/src/vendor
+/src/.env
+
+/mysql_data
