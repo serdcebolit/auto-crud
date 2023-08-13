@@ -1,7 +1,6 @@
 version: "3.9"
 services:
   backend:
-#    user: bitrix
     container_name: auto-crud_httpd
     ports:
       - "80:8887"

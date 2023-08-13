@@ -2,7 +2,7 @@
 
 namespace Lib\DataBase\Fields;
 
-use lib\Enum\FieldTypes;
+use Lib\Enum\FieldTypes;
 
 class IntegerField extends BaseField
 {

@@ -6,8 +6,9 @@ abstract class BaseField
 {
 	protected string $name;
 	protected string $dataType;
-
 	protected string $title;
+
+	protected bool $needToShow = true;
 
 	/** @var null|callable */
 	protected $validation = null;
@@ -34,5 +35,21 @@ abstract class BaseField
 	{
 		$this->validation = $validation;
 		return $this;
+	}
+
+	public function getName(): string
+	{
+		return $this->name;
+	}
+
+	public function setNeedToShow(bool $bool): self
+	{
+		$this->needToShow = $bool;
+		return $this;
+	}
+
+	public function getNeedToShow(): bool
+	{
+		return $this->needToShow;
 	}
 }

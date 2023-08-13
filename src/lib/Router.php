@@ -6,89 +6,81 @@ use Lib\Controller\BaseController;
 use Lib\Enum\RequestMethods;
 use Lib\Exception\ControllerNotFoundException;
 use Lib\Exception\ModelNotFoundException;
-use function _\first;
 
 class Router
 {
-	protected string $url = '';
-	protected array $get = [];
-	protected array $post = [];
-	protected string $method = '';
-	protected array $files = [];
+	/**
+	 * @var Dto\Router[]
+	 */
+	protected array $routes = [];
+	protected bool $routeFound = false;
 
 	public function __construct()
 	{
-		$this->url = first(explode('?', $_SERVER['REQUEST_URI']));
-		$this->get = $_GET;
-		$this->post = $_POST;
-		$this->files = $_FILES;
-		$this->method = $_SERVER['REQUEST_METHOD'];
+	}
+
+	public function registerRoute(Dto\Router $data): void
+	{
+		$this->routes[] = $data;
 	}
 
 	/**
 	 * Создаёт экземпляр контроллера для отображения страниц или сохранения информации
 	 *
-	 * @throws ControllerNotFoundException
+	 * @throws ControllerNotFoundException|ModelNotFoundException
 	 */
-	public function run(Dto\Router $data): void
+	public function run(bool $needToShow404 = true): void
 	{
-		if ($data->url === $this->url && $data->requestMethod->value == $this->method)
+		$request = Application::getInstance()->getRequest();
+
+		foreach ($this->routes as $route)
 		{
-			if (!class_exists($data->controller))
+			if ($route->url === $request->getUrl() && $route->requestMethod->value == $request->getRequestMethod())
 			{
-				throw new ControllerNotFoundException("Контроллер $data->controller не найден");
+				if (!class_exists($route->controller))
+				{
+					throw new ControllerNotFoundException("Контроллер $route->controller не найден");
+				}
+
+				if (isset($route->params['title']))
+				{
+					Application::getInstance()->setTitle($route->params['title']);
+				}
+
+				/** @var BaseController $ob */
+				$controller = new $route->controller($route->params);
+
+				ob_start();
+				$controller->run();
+				$result = ob_get_clean();
+
+				if (!$route->isRest || !$route->requestMethod == RequestMethods::POST)
+				{
+					ViewManager::show('header');
+					echo $result;
+					ViewManager::show('footer');
+				}
+				else
+				{
+					echo $result;
+				}
+
+				$this->routeFound = true;
+				break;
 			}
-
-			if (isset($data->params['title']))
-			{
-				Application::getInstance()->setTitle($data->params['title']);
-			}
-
-			/** @var BaseController $ob */
-			$controller = new $data->controller($data->params);
-
-			ob_start();
-			$controller->run();
-			$result = ob_get_clean();
-
-			if (!$data->isRest || !$data->requestMethod == RequestMethods::Post)
-			{
-				ViewManager::show('header');
-				echo $result;
-				ViewManager::show('footer');
-			}
-			else
-			{
-				echo $result;
-			}
-
-			exit();
 		}
-	}
 
-	public function getCurrentUrl(): string
-	{
-		return $this->url;
-	}
-
-	public function getGet(): array
-	{
-		return $this->get;
-	}
-
-	public function getPost(): array
-	{
-		return $this->post;
-	}
-
-	public function getFiles(): array
-	{
-		return $this->files;
+		if (!$this->routeFound && $needToShow404)
+		{
+			static::show404();
+		}
 	}
 
 	public function redirect(string $url): never
 	{
+		ob_start();
 		header("Location: $url");
+		ob_end_flush();
 		exit();
 	}
 
@@ -110,5 +102,13 @@ class Router
 		ViewManager::show('footer');
 		ob_end_flush();
 		exit($exception?->getCode() ?? 1);
+	}
+
+	public static function show404(): void
+	{
+		\Lib\Application::getInstance()->setTitle('Страница не найдена');
+		\Lib\ViewManager::show('header', ['needTitle' => false, 'needSiteName' => true]);
+		\Lib\ViewManager::show('404');
+		\Lib\ViewManager::show('footer');
 	}
 }

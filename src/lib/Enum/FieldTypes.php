@@ -10,4 +10,5 @@ enum FieldTypes : string
 	case Date = 'date';
 	case DateTime = 'datetime';
 	case Reference = 'reference';
+	case File = 'file';
 }

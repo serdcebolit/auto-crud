@@ -3,5 +3,6 @@
 
 /src/vendor
 /src/.env
+/src/files
 
 /mysql_data

@@ -4,6 +4,6 @@ namespace Lib\Enum;
 
 enum RequestMethods: string
 {
-	case Get = 'GET';
-	case Post = 'POST';
+	case GET = 'GET';
+	case POST = 'POST';
 }

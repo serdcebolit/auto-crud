@@ -4,7 +4,13 @@ namespace Lib\DataBase;
 
 use Exception;
 use Lib\Application;
+use Lib\DataBase\Fields\BaseField;
+use Lib\DataBase\Fields\ReferenceField;
 use Lib\DataBase\ORM\Query;
+use Lib\Exception\DataBaseException;
+use function _\difference;
+use function _\groupBy;
+use function _\map;
 
 abstract class DataManager
 {
@@ -14,6 +20,7 @@ abstract class DataManager
 	{
 		return '';
 	}
+	public abstract static function getDescription(): string;
 
 	/**
 	 * @return array
@@ -26,7 +33,61 @@ abstract class DataManager
 	 */
 	public static function query(): Query
 	{
-		return new Query(static::getTableName());
+		$query = new Query(static::getTableName());
+
+		foreach (static::getMap() as $field)
+		{
+			if ($field instanceof ReferenceField)
+			{
+				if (!is_subclass_of($field->getJoinTableClass(), DataManager::class))
+				{
+					throw new DataBaseException("Class {$field->getJoinTableClass()} is not instance of " . DataManager::class);
+				}
+
+				if ($field->getIntermediateTable())
+				{
+					$query->registerRuntimeField(
+						$field->getIntermediateTable() . '_alias',
+						[
+							'data_class' => $field->getIntermediateTable(),
+							'reference' => [
+								'this' => 'ID',
+								'ref' => $field->getReferenceFields()->currentFieldName,
+							],
+							'join_type' => $field->getJoinType()->value,
+						]
+					);
+
+					$query->registerRuntimeField(
+						$field->getName(),
+						[
+							'data_class' => $field->getJoinTableClass()::getTableName(),
+							'reference' => [
+								'this' => $field->getIntermediateTable() . '_alias.' . $field->getReferenceFields()->referenceFieldName,
+								'ref' => 'ID',
+							],
+							'join_type' => $field->getJoinType()->value,
+						]
+					);
+				}
+				else
+				{
+					$query->registerRuntimeField(
+						$field->getName(),
+						[
+							'data_class' => $field->getJoinTableClass()::getTableName(),
+							'reference' => [
+								'this' => $field->getReferenceFields()->currentFieldName,
+								'ref' => $field->getReferenceFields()->referenceFieldName,
+							],
+							'join_type' => $field->getJoinType()->value,
+						]
+					);
+				}
+			}
+		}
+
+		return $query;
 	}
 
 	public static function getSqlQueries(): array
@@ -34,7 +95,60 @@ abstract class DataManager
 		return static::$sqlQueries;
 	}
 
-	public abstract static function getAll(): array;
+	public static function getAll(): array
+	{
+		$query = static::query();
+		$flatResult = [];
+		$result = [];
+		$refFields = [];
+
+		foreach (static::getMap() as $field)
+		{
+			if ($field instanceof ReferenceField)
+			{
+				$refFields = [
+					...$refFields,
+					...map($field->getFieldsToSelect(), fn($item) => $field->getName() . '_' . $item),
+				];
+				foreach ($field->getFieldsToSelect() as $item)
+				{
+					$str = $field->getName() . '.' . $item;
+					$query->addSelect($str, str_replace('.', '_', $str));
+				}
+			}
+			else
+			{
+				/** @var $field BaseField */
+				if ($field->getNeedToShow())
+				{
+					$str = static::getTableName() . '.' . $field->getName();
+					$query->addSelect($str, str_replace('.', '_', $str));
+				}
+			}
+		}
+
+		$sqlResult = $query->addOrder(static::getTableName() . '.ID', 'ASC')
+			->exec()
+			->fetchAll();
+
+		echo '<pre>' . __FILE__ . ':' . __LINE__ . ':<br>' . print_r($refFields, true) . '</pre>';
+
+		foreach ($sqlResult as $item)
+		{
+			$newItm = [];
+
+			foreach ($item as $key => $value)
+			{
+				$newItm[str_replace(static::getTableName() . '_', '', $key)] = $value;
+			}
+
+			$flatResult[] = $newItm;
+		}
+
+		// объединяем записи по одинаковым знаениям, а разные значения собираем в массив
+
+		return $flatResult;
+	}
 
 	/**
 	 * @param $params

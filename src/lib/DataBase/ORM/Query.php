@@ -187,7 +187,7 @@ class Query
 				$refTable = count($ref) > 1 ? $ref[0] : $this->tableName;
 				$refOn = count($ref) > 1 ? $ref[1] : $itm["reference"]["this"];
 				$joinStr = ($itm["join_type"]) ? ' ' . $itm["join_type"] : '';
-				$joinStr .= " join " . $class . ' as '. $alias . " on `${refTable}`." .
+				$joinStr .= " join " . $class . ' as '. $alias . " on `$refTable`." .
 					$refOn . ' = ' .
 					$alias . '.' . $itm["reference"]["ref"] . ' ';
 
